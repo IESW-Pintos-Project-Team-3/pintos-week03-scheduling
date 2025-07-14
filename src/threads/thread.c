@@ -19,6 +19,8 @@
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
+#define TOTALTICKETS 10000
+#define SCALINGFACTOR 1024
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -140,8 +142,10 @@ thread_tick (void)
     kernel_ticks++;
 
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
+  if (++thread_ticks >= TIME_SLICE){
     intr_yield_on_return ();
+  }
+    
 }
 
 /* Prints thread statistics. */
@@ -365,8 +369,9 @@ thread_yield (void)
   enum intr_level old_level;
   
   ASSERT (!intr_context ());
-
+  
   old_level = intr_disable ();
+  cur->pass += (timer_ticks() - cur->scheduled_ticks) * TOTALTICKETS * SCALINGFACTOR / cur->priority;
   if (cur != idle_thread) 
     list_push_back (&ready_list, &cur->elem);
   cur->status = THREAD_READY;
@@ -659,6 +664,21 @@ get_next_tick_to_awake (void)
 {
   return list_empty(&blocked_list) ? INT64_MAX : next_tick_to_awake;
 }
+
+bool
+thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+{
+    struct thread *ta = list_entry(a, struct thread, elem);
+    struct thread *tb = list_entry(b, struct thread, elem);
+
+    if (ta->pass == tb->pass){
+        return ta->tid < tb->tid ? true : false;
+    }
+    else{
+        return ta->pass < tb->pass ? true : false;
+    }
+}
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
