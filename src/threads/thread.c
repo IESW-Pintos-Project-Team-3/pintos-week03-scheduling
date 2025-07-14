@@ -4,6 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include <random.h>
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -243,6 +244,7 @@ thread_unblock (struct thread *t)
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
   list_push_back (&ready_list, &t->elem);
+  inc_total_tickets(t);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -347,6 +349,7 @@ thread_awake(int64_t ticks)
       ASSERT(t->status == THREAD_BLOCKED);
       list_push_back(&ready_list, &t->elem);
       t->status = THREAD_READY;
+      inc_total_tickets(t);
     }
     else{
       e = list_next(e);
@@ -662,3 +665,47 @@ get_next_tick_to_awake (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+static int total_tickets;
+
+void
+inc_total_tickets(struct thread *t)
+{
+  total_tickets += t->priority;
+}
+
+void 
+dec_total_tickets(struct thread *t)
+{
+  total_tickets += t->priority;
+}
+
+/* Lottery Scheduling */
+struct thread *
+lottery_scheduling(void)
+{
+ /*
+  누적 합 = 0 설정 
+  랜덤 수 설정 
+  ready_list를 시작부터 순회 
+  ready_list의 ticket값을 더해가면서 랜덤 수 누적 합과 비교 
+  - 누적 합이 랜덤 값보다 크다면 해당 쓰레드 선택, 작거나 같다면 다음 리스트로 이동 
+  - running 쓰레드는 ready 상태로 바꾸고 넣는다. 
+ */
+
+  int accumulate = 0;
+  unsigned long rand_number = random_ulong () % total_tickets;
+
+  struct list_elem *e;
+
+  for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+    struct thread *t = list_entry(e, struct thread, elem);
+    accumulate += t->priority;
+    if(accumulate >= rand_number){
+        list_remove(t);
+        /* 리턴을 해줌으로서 next_thread_to_run 에 해당하는 쓰레드가 됨 */
+        return t;
+    } 
+  }
+  
+}
