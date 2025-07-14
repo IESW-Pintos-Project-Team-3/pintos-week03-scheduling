@@ -19,6 +19,8 @@
    Used to detect stack overflow.  See the big comment at the top
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
+#define TOTALTICKETS 10000
+#define SCALINGFACTOR 1024
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
@@ -140,8 +142,10 @@ thread_tick (void)
     kernel_ticks++;
 
   /* Enforce preemption. */
-  if (++thread_ticks >= TIME_SLICE)
+  if (++thread_ticks >= TIME_SLICE){
     intr_yield_on_return ();
+  }
+    
 }
 
 /* Prints thread statistics. */
@@ -313,6 +317,7 @@ thread_sleep(int64_t ticks)
   old_level = intr_disable();
   if(cur != idle_thread)
   {
+    cur->pass += thread_ticks * TOTALTICKETS * SCALINGFACTOR / cur->priority;
     cur->tick_to_awake = ticks;
     list_push_back(&blocked_list, &cur->elem);
   }
@@ -345,6 +350,17 @@ thread_awake(int64_t ticks)
 
       old_level = intr_disable();
       ASSERT(t->status == THREAD_BLOCKED);
+      /*if (list_empty(&ready_list)){
+          t->pass = 0;
+      }
+      else{
+          while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+            t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+          }
+      }*/
+     while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+            t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+     }
       list_push_back(&ready_list, &t->elem);
       t->status = THREAD_READY;
     }
@@ -365,10 +381,12 @@ thread_yield (void)
   enum intr_level old_level;
   
   ASSERT (!intr_context ());
-
+  
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread) {
+    cur->pass += thread_ticks * TOTALTICKETS * SCALINGFACTOR / cur->priority;
     list_push_back (&ready_list, &cur->elem);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -523,6 +541,15 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->tick_to_awake = INT64_MAX;
+  if (list_empty(&ready_list)){
+      t->pass = 0;
+  }
+  else{
+      t->pass = 0;
+      while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+          t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+      }
+  }
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -553,8 +580,11 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  else{
+    struct list_elem* next = list_min (&ready_list, thread_pass_less, NULL);
+    list_remove(next);
+    return list_entry (next, struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -660,70 +690,18 @@ get_next_tick_to_awake (void)
   return list_empty(&blocked_list) ? INT64_MAX : next_tick_to_awake;
 }
 
-void link_node(struct rb_node* node, struct rb_root* root){
-  node->rb_left = node->rb_right = NULL;
-  node->rb_parent_color = 0;
+bool
+thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+{
+    struct thread *ta = list_entry(a, struct thread, elem);
+    struct thread *tb = list_entry(b, struct thread, elem);
 
-  if(RB_EMPTY_ROOT(root)){
-     root->rb_node = root->rb_leftmost = root->rb_rightmost = node;
-     rb_insert(node, root);
-     return;
-  }
-
-  struct thread* new_thread = rb_node_entry(node, struct thread, elem);
-  struct thread* left = rb_node_entry(root->rb_leftmost, struct thread, elem);
-  struct thread* right = rb_node_entry(root->rb_rightmost, struct thread, elem);
-  while (new_thread->pass < left->pass){
-    new_thread->pass += new_thread->stride;
-  }
-
-  bool new_left, new_right;
-  if (new_thread->pass == left->pass){
-      new_left = new_thread->tid < left->tid ? true : false;
-  }
-  if (new_thread->pass == right->pass){
-      root->rb_rightmost = new_thread->tid > right->tid ? true : false ;
-  }
- 
-  struct rb_node* pnode = root->rb_node;
-  struct rb_node* cnode = root->rb_node;
-  struct thread* parent;
-  struct thread* cur;
-  while (cnode){
-      pnode = cnode;
-      cur = rb_node_entry(cnode, struct thread, elem);
-      if (new_thread->pass < cur->pass){
-          cnode = cnode->rb_left;
-      }
-      else if (new_thread->pass > cur->pass){
-          cnode = cnode->rb_right;
-      }
-      else{
-          if (new_thread->tid < cur->tid){
-              cnode = cnode->rb_left;
-          }
-          else{
-              cnode = cnode->rb_right;
-          }
-      }
-   }
-   node->rb_parent_color = pnode;
-   parent = rb_node_entry(pnode, struct thread, elem);
-   if (new_thread->pass < parent->pass){
-         pnode->rb_left = node;
-   }
-   else if (new_thread->pass > parent->pass){
-       pnode->rb_right = node;
-   }
-   else{
-       if (new_thread->tid < parent->tid){
-           pnode->rb_left = node;
-       }
-       else{
-           pnode->rb_right = node;
-       }
-   }
-   rb_insert(node, root);
+    if (ta->pass == tb->pass){
+        return ta->tid < tb->tid ? true : false;
+    }
+    else{
+        return ta->pass < tb->pass ? true : false;
+    }
 }
 
 /* Offset of `stack' member within `struct thread'.
