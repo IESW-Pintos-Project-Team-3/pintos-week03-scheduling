@@ -140,7 +140,7 @@ define p_all
         # pointer arithemetic is n times of datasize
         # To get struct thread entry, need 4*8 miuns
         set $thread = (struct thread*)($node-4)
-        printf "  tid = %d, name = %s, ", $thread->tid, $thread->name
+        printf "  tid = %d, name = %s, pass = %d ", $thread->tid, $thread->name, $thread->pass
         p $thread->status
         set $node = $node->next
     end
@@ -154,8 +154,8 @@ define p_ready
         # elem's offset is 48 in structh thread and struct listelem's size is 8bytes
         # pointer arithemetic is n times of datasize
         # To get struct thread entry, need 6*8 miuns
-        set $thread = (struct thread*)($node-6)
-        printf "  tid = %d, name = %s, ", $thread->tid, $thread->name
+        set $thread = (struct thread*)($node-7)
+        printf "  tid = %d, name = %s, pass = %d ", $thread->tid, $thread->name, $thread->pass
         p $thread->status
         set $node = $node->next
     end
@@ -169,8 +169,8 @@ define p_blocked
         # elem's offset is 48 in structh thread and struct listelem's size is 8bytes
         # pointer arithemetic is n times of datasize
         # To get struct thread entry, need 6*8 miuns
-        set $thread = (struct thread*)($node-6)
-        printf "  tid = %d, name = %s, ", $thread->tid, $thread->name
+        set $thread = (struct thread*)($node-7)
+        printf "  tid = %d, name = %s, pass = %d ", $thread->tid, $thread->name, $thread->pass
         p $thread->status
         set $node = $node->next
     end

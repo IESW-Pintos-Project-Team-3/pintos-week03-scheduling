@@ -317,7 +317,7 @@ thread_sleep(int64_t ticks)
   old_level = intr_disable();
   if(cur != idle_thread)
   {
-    cur->pass = thread_ticks * TOTALTICKETS * SCALINGFACTOR * cur->priority;
+    cur->pass += thread_ticks * TOTALTICKETS * SCALINGFACTOR / cur->priority;
     cur->tick_to_awake = ticks;
     list_push_back(&blocked_list, &cur->elem);
   }
@@ -350,14 +350,17 @@ thread_awake(int64_t ticks)
 
       old_level = intr_disable();
       ASSERT(t->status == THREAD_BLOCKED);
-      if (list_empty(&ready_list)){
+      /*if (list_empty(&ready_list)){
           t->pass = 0;
       }
       else{
           while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
-          t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
-      }
-      }
+            t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+          }
+      }*/
+     while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+            t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+     }
       list_push_back(&ready_list, &t->elem);
       t->status = THREAD_READY;
     }
@@ -577,8 +580,11 @@ next_thread_to_run (void)
 {
   if (list_empty (&ready_list))
     return idle_thread;
-  else
-    return list_entry (list_min (&ready_list, thread_pass_less, NULL), struct thread, elem);
+  else{
+    struct list_elem* next = list_min (&ready_list, thread_pass_less, NULL);
+    list_remove(next);
+    return list_entry (next, struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page
