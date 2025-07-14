@@ -372,6 +372,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread) 
     list_push_back (&ready_list, &cur->elem);
+    inc_total_tickets(cur);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -703,6 +704,7 @@ lottery_scheduling(void)
     accumulate += t->priority;
     if(accumulate >= rand_number){
         list_remove(t);
+        dec_total_tickets(t);
         /* 리턴을 해줌으로서 next_thread_to_run 에 해당하는 쓰레드가 됨 */
         return t;
     } 
