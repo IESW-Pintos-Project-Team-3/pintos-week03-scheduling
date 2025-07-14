@@ -22,7 +22,7 @@
 
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
-static struct list ready_list;
+static struct rb_root ready_list;
 
 static struct list blocked_list;
 /* List of all processes.  Processes are added to this list
@@ -659,6 +659,73 @@ get_next_tick_to_awake (void)
 {
   return list_empty(&blocked_list) ? INT64_MAX : next_tick_to_awake;
 }
+
+void link_node(struct rb_node* node, struct rb_root* root){
+  node->rb_left = node->rb_right = NULL;
+  node->rb_parent_color = 0;
+
+  if(RB_EMPTY_ROOT(root)){
+     root->rb_node = root->rb_leftmost = root->rb_rightmost = node;
+     rb_insert(node, root);
+     return;
+  }
+
+  struct thread* new_thread = rb_node_entry(node, struct thread, elem);
+  struct thread* left = rb_node_entry(root->rb_leftmost, struct thread, elem);
+  struct thread* right = rb_node_entry(root->rb_rightmost, struct thread, elem);
+  while (new_thread->pass < left->pass){
+    new_thread->pass += new_thread->stride;
+  }
+
+  bool new_left, new_right;
+  if (new_thread->pass == left->pass){
+      new_left = new_thread->tid < left->tid ? true : false;
+  }
+  if (new_thread->pass == right->pass){
+      root->rb_rightmost = new_thread->tid > right->tid ? true : false ;
+  }
+ 
+  struct rb_node* pnode = root->rb_node;
+  struct rb_node* cnode = root->rb_node;
+  struct thread* parent;
+  struct thread* cur;
+  while (cnode){
+      pnode = cnode;
+      cur = rb_node_entry(cnode, struct thread, elem);
+      if (new_thread->pass < cur->pass){
+          cnode = cnode->rb_left;
+      }
+      else if (new_thread->pass > cur->pass){
+          cnode = cnode->rb_right;
+      }
+      else{
+          if (new_thread->tid < cur->tid){
+              cnode = cnode->rb_left;
+          }
+          else{
+              cnode = cnode->rb_right;
+          }
+      }
+   }
+   node->rb_parent_color = pnode;
+   parent = rb_node_entry(pnode, struct thread, elem);
+   if (new_thread->pass < parent->pass){
+         pnode->rb_left = node;
+   }
+   else if (new_thread->pass > parent->pass){
+       pnode->rb_right = node;
+   }
+   else{
+       if (new_thread->tid < parent->tid){
+           pnode->rb_left = node;
+       }
+       else{
+           pnode->rb_right = node;
+       }
+   }
+   rb_insert(node, root);
+}
+
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);

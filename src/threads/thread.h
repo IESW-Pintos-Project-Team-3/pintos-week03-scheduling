@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <rbtree.h>
 #include <stdint.h>
 
 /* States in a thread's life cycle. */
@@ -95,7 +96,7 @@ struct thread
     int64_t pass;              /* Pass value how long thread get CPU */
 
     /* Shared between thread.c and synch.c. */
-    struct list_elem elem;              /* List element. */
+    struct rb_node elem;              /* List element. */
 
   
 

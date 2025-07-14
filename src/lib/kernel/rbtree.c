@@ -76,7 +76,7 @@ rb_next(const struct rb_node *node)
      * 부모노드보다 다 작은 노드들이기 때문
      * 그 위는 부모노드보다 크건 작건 상관없음
 	 */
-	while ((parent = rb_parent(node)) && node == parent->rb_right){
+	while ((parent = rb_parent((unsigned long)node)) && node == parent->rb_right){
 		node = parent;
     }
 
@@ -111,7 +111,7 @@ rb_prev(const struct rb_node *node)
      * 부모노드보다 다 큰 노드들이기 때문
      * 그 위는 부모노드보다 크건 작건 상관없음
 	 */
-	while ((parent = rb_parent(node)) && node == parent->rb_left){
+	while ((parent = rb_parent((unsigned long)node)) && node == parent->rb_left){
 		node = parent;
     }
 
@@ -131,7 +131,7 @@ rb_set_red(struct rb_node* rb)
 }
 
 
-static inline void
+static inline struct rb_node*
 rb_get_parent(struct rb_node* node)
 {
     return (struct rb_node*)node->rb_parent_color;
@@ -141,8 +141,8 @@ static inline void
 rb_rotate_set_parents(struct rb_node *old, struct rb_node *new,
 			struct rb_root *root, int color)
 {
-	struct rb_node *parent = rb_parent(old);
-	new->__rb_parent_color = old->__rb_parent_color;
+	struct rb_node *parent = rb_parent((unsigned long)old);
+	new->rb_parent_color = old->rb_parent_color;
 	rb_set_parent_color(old, new, color);
 	rb_change_child(old, new, parent, root);
 }
@@ -171,7 +171,7 @@ rb_insert(struct rb_node* node, struct rb_node* root)
         struct rb_node* gparent = rb_get_parent(parent);
         struct rb_node* tmp = gparent->rb_right;
         if(tmp != parent){ //부모노드 != tmp, 부모노드가 조부모의 왼쪽 자식
-            if(tmp && rb_is_red(tmp)){
+            if(tmp && rb_is_red((unsigned long)tmp)){
                 /*
                  * CASE 1 -> Recoloring
                  */
@@ -233,7 +233,7 @@ rb_insert(struct rb_node* node, struct rb_node* root)
         }
         else{//부모노드 = tmp, 부모노드가 조부모의 오른쪽 자식
             tmp = gparent->rb_left;
-            if (tmp && rb_is_red(tmp)) {
+            if (tmp && rb_is_red((unsigned long)tmp)) {
 				//CASE 1 -> Recoloring
 				rb_set_black(tmp);
                 rb_set_black(parent);
@@ -285,8 +285,8 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 {
 	struct rb_node* node = NULL;
 	struct rb_node* sibling;
-	struct rb_ndoe* tmp1;
-	struct rb_ndoe* tmp2;
+	struct rb_node* tmp1;
+	struct rb_node* tmp2;
 
 	while (true) {
 		sibling = parent->rb_right;
@@ -311,9 +311,9 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 				sibling = tmp1;
 			}
 			tmp1 = sibling->rb_right;
-			if (!tmp1 || rb_is_black(tmp1)) { //형제노드의 오른쪽 자식이 BLACK
+			if (!tmp1 || rb_is_black((unsigned long)tmp1)) { //형제노드의 오른쪽 자식이 BLACK
 				tmp2 = sibling->rb_left;
-				if (!tmp2 || rb_is_black(tmp2)) { 
+				if (!tmp2 || rb_is_black((unsigned long)tmp2)) { 
 					/*
 					 * 형제노드의 자식이 둘다 BLACK
 					 * 형제노드를 RED로 만들고 부모노드를 BLACK 칠함
@@ -331,11 +331,11 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
                      * 부모노드가 원래 BLACK이였다면 문제를 부모노드에게 전가한 것이기 때문에
                      * 부모노드를 삭제노드로 간주하고 다시 rebalancing
                      */
-					if (rb_is_red(parent))
+					if (rb_is_red((unsigned long)parent))
 						rb_set_black(parent);
 					else {
 						node = parent;
-						parent = rb_parent(node);
+						parent = rb_parent((unsigned long)node);
 						if (parent){
 							continue;
                         }
@@ -403,17 +403,17 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 				sibling = tmp1;
 			}
 			tmp1 = sibling->rb_left;
-			if (!tmp1 || rb_is_black(tmp1)) {
+			if (!tmp1 || rb_is_black((unsigned long)tmp1)) {
 				tmp2 = sibling->rb_right;
-				if (!tmp2 || rb_is_black(tmp2)) {
+				if (!tmp2 || rb_is_black((unsigned long)tmp2)) {
                     //위에서 한 rebalancing 좌우반전?
 					rb_set_parent_color(sibling, parent, RB_RED);
-					if (rb_is_red(parent)){
+					if (rb_is_red((unsigned long)parent)){
 						rb_set_black(parent);
                     }
 					else {
 						node = parent;
-						parent = rb_parent(node);
+						parent = rb_parent((unsigned long)node);
 						if (parent){
 							continue;
                         }
