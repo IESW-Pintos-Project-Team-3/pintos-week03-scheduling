@@ -317,6 +317,7 @@ thread_sleep(int64_t ticks)
   old_level = intr_disable();
   if(cur != idle_thread)
   {
+    cur->pass = thread_ticks * TOTALTICKETS * SCALINGFACTOR * cur->priority;
     cur->tick_to_awake = ticks;
     list_push_back(&blocked_list, &cur->elem);
   }
@@ -349,6 +350,14 @@ thread_awake(int64_t ticks)
 
       old_level = intr_disable();
       ASSERT(t->status == THREAD_BLOCKED);
+      if (list_empty(&ready_list)){
+          t->pass = 0;
+      }
+      else{
+          while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+          t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+      }
+      }
       list_push_back(&ready_list, &t->elem);
       t->status = THREAD_READY;
     }
@@ -529,7 +538,15 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->tick_to_awake = INT64_MAX;
-  
+  if (list_empty(&ready_list)){
+      t->pass = 0;
+  }
+  else{
+      t->pass = 0;
+      while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+          t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+      }
+  }
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -561,7 +578,7 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return list_entry (list_min (&ready_list, thread_pass_less, NULL), struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
