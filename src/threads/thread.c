@@ -371,9 +371,10 @@ thread_yield (void)
   ASSERT (!intr_context ());
   
   old_level = intr_disable ();
-  cur->pass += (timer_ticks() - cur->scheduled_ticks) * TOTALTICKETS * SCALINGFACTOR / cur->priority;
-  if (cur != idle_thread) 
+  if (cur != idle_thread) {
+    cur->pass += thread_ticks * TOTALTICKETS * SCALINGFACTOR / cur->priority;
     list_push_back (&ready_list, &cur->elem);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -528,6 +529,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->tick_to_awake = INT64_MAX;
+  
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
