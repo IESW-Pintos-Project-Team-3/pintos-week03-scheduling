@@ -558,7 +558,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return lottery_scheduling();
+    /*list_entry (list_pop_front (&ready_list), struct thread, elem);*/
 }
 
 /* Completes a thread switch by activating the new thread's page
