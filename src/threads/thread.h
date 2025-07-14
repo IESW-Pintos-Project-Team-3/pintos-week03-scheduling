@@ -91,7 +91,6 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
 
     int64_t tick_to_awake;           /* Tick to awake. */
-    int64_t scheduled_ticks;              /* Tick when scheduled */
     int64_t pass;              /* Pass value how long thread get CPU */
 
     /* Shared between thread.c and synch.c. */
