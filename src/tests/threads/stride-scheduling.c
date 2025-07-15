@@ -11,8 +11,8 @@
 #include "devices/timer.h"
 
 static struct lock count_lock;
-static int thread_counts[3] = {0, 0, 0}; // 각 스레드의 실행 횟수
-static int thread_tickets[3] = {250, 500, 750}; // 각 스레드의 티켓 수
+static int thread_counts[5] = {0, 0, 0, 0, 0}; // 각 스레드의 실행 횟수
+static int thread_tickets[5] = {50 ,250, 500, 750, 1000}; // 각 스레드의 티켓 수
 static bool test_finished = false;
 
 struct thread_data {
@@ -26,7 +26,7 @@ void
 test_stride_scheduling (void) 
 {
   int i;
-  struct thread_data data[3];
+  struct thread_data data[5];
   
   /* This test does not work with the MLFQS. */
   ASSERT (!thread_mlfqs);
@@ -34,12 +34,14 @@ test_stride_scheduling (void)
   lock_init (&count_lock);
   
   msg ("Starting stride scheduling test with 3 threads:");
-  msg ("Thread 0: 250 tickets");
-  msg ("Thread 1: 500 tickets"); 
-  msg ("Thread 2: 750 tickets");
+  msg ("Thread 0: 50 tickets");
+  msg ("Thread 1: 250 tickets");
+  msg ("Thread 2: 500 tickets"); 
+  msg ("Thread 3: 750 tickets");
+  msg ("Thread 4: 1000 tickets");
   
   /* Create 3 threads with different ticket counts */
-  for (i = 0; i < 3; i++) 
+  for (i = 0; i < 5; i++) 
     {
       char name[32];
       snprintf (name, sizeof name, "stride-thread-%d", i);
@@ -76,7 +78,7 @@ test_stride_scheduling (void)
   /* Show expected vs actual distribution (using integer arithmetic) */
   msg ("Expected vs Actual distribution:");
   for (i = 0; i < 3; i++) {
-    int expected_percent = (thread_tickets[i] * 100) / 1500; // 250+500+750=1500
+    int expected_percent = (thread_tickets[i] * 100) / 2550; // 250+500+750=1500
     int actual_percent = (thread_counts[i] * 100) / total_runs;
     msg ("Thread %d: expected %d%%, actual %d%%", i, expected_percent, actual_percent);
   }
