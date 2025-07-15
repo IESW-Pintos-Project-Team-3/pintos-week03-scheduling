@@ -160,7 +160,7 @@ define p_ready
     printf "{\n"
     while $node != 0
         set $thread = (struct thread*)((char*)$node-64)
-        printf "  tid = %d, name = %s, pass = %d, \n", $thread->tid, $thread->name, $thread->pass
+        printf "  tid = %d, name = %s, pass = %d, color = %lu\n", $thread->tid, $thread->name, $thread->pass, ($node->rb_parent_color & 1)
         if ($node->rb_right != 0)
             set $node = (struct rb_node *)$node->rb_right
             while $node->rb_left != 0

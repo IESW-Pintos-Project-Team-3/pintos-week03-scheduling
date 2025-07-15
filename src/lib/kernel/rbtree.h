@@ -5,6 +5,18 @@
 #define __always_inline inline __attribute__((always_inline))
 #endif
 
+struct rb_node{
+  unsigned long rb_parent_color;
+  struct rb_node* rb_left;
+  struct rb_node* rb_right;
+}__attribute__((aligned(sizeof(long))));
+
+struct rb_root {
+	struct rb_node* rb_node;
+	struct rb_node* rb_leftmost;
+	struct rb_node* rb_rightmost;
+};
+
 #define READ_ONCE(x) (*(volatile typeof(x)* )&(x))
 
 #define WRITE_ONCE(x, val) \
@@ -27,20 +39,8 @@
 
 //하위 2비트를 이용한 노드의 색구분
 #define rb_color(pc)     ((pc) & 1)
-#define rb_is_black(pc)  rb_color(pc)
-#define rb_is_red(pc)    (!rb_color(pc))
-
-struct rb_node{
-  unsigned long rb_parent_color;
-  struct rb_node* rb_left;
-  struct rb_node* rb_right;
-}__attribute__((aligned(sizeof(long))));
-
-struct rb_root {
-	struct rb_node* rb_node;
-	struct rb_node* rb_leftmost;
-	struct rb_node* rb_rightmost;
-};
+#define rb_is_black(pc)  rb_color((pc)->rb_parent_color)
+#define rb_is_red(pc)    (!rb_color((pc)->rb_parent_color))
 
 extern void rb_init(struct rb_root*);
 extern struct rb_node* rb_next(const struct rb_node* );

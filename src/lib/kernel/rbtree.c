@@ -163,7 +163,7 @@ rb_insert(struct rb_node* node, struct rb_root* root)
             break;
         }
 
-        if(rb_is_black((unsigned long)parent)){
+        if(rb_is_black(parent)){
             //삽입한 노드의 부모가 검은색 노드이면 리밸런싱 필요없음
             break;
         }
@@ -171,7 +171,7 @@ rb_insert(struct rb_node* node, struct rb_root* root)
         struct rb_node* gparent = rb_get_parent(parent);
         struct rb_node* tmp = gparent->rb_right;
         if(tmp != parent){ //부모노드 != tmp, 부모노드가 조부모의 왼쪽 자식
-            if(tmp && rb_is_red((unsigned long)tmp)){
+            if(tmp && rb_is_red(tmp)){
                 /*
                  * CASE 1 -> Recoloring
                  */
@@ -233,7 +233,7 @@ rb_insert(struct rb_node* node, struct rb_root* root)
         }
         else{//부모노드 = tmp, 부모노드가 조부모의 오른쪽 자식
             tmp = gparent->rb_left;
-            if (tmp && rb_is_red((unsigned long)tmp)) {
+            if (tmp && rb_is_red(tmp)) {
 				//CASE 1 -> Recoloring
 				rb_set_black(tmp);
                 rb_set_black(parent);
@@ -291,7 +291,7 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 	while (true) {
 		sibling = parent->rb_right;
 		if (node != sibling) {
-			if (rb_is_red((unsigned long) sibling)) {
+			if (rb_is_red(sibling)) {
 				/*
 				 * 삭제된 노드의 형제노드가 오른쪽 노드 && RED
 				 * 삭제된 노드의 형제노드를 BLACK으로 만들어줌
@@ -311,9 +311,9 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 				sibling = tmp1;
 			}
 			tmp1 = sibling->rb_right;
-			if (!tmp1 || rb_is_black((unsigned long)tmp1)) { //형제노드의 오른쪽 자식이 BLACK
+			if (!tmp1 || rb_is_black(tmp1)) { //형제노드의 오른쪽 자식이 BLACK
 				tmp2 = sibling->rb_left;
-				if (!tmp2 || rb_is_black((unsigned long)tmp2)) { 
+				if (!tmp2 || rb_is_black(tmp2)) { 
 					/*
 					 * 형제노드의 자식이 둘다 BLACK
 					 * 형제노드를 RED로 만들고 부모노드를 BLACK 칠함
@@ -331,7 +331,7 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
                      * 부모노드가 원래 BLACK이였다면 문제를 부모노드에게 전가한 것이기 때문에
                      * 부모노드를 삭제노드로 간주하고 다시 rebalancing
                      */
-					if (rb_is_red((unsigned long)parent))
+					if (rb_is_red(parent))
 						rb_set_black(parent);
 					else {
 						node = parent;
@@ -392,7 +392,7 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 			break;
 		} else { //형제노드가 부모노드의 왼쪽 자식
 			sibling = parent->rb_left;
-			if (rb_is_red((unsigned long)sibling)) {
+			if (rb_is_red(sibling)) {
                 //위에서 한 rebalancing 좌우반전?
 				tmp1 = sibling->rb_right;
 				WRITE_ONCE(parent->rb_left, tmp1);
@@ -403,12 +403,12 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 				sibling = tmp1;
 			}
 			tmp1 = sibling->rb_left;
-			if (!tmp1 || rb_is_black((unsigned long)tmp1)) {
+			if (!tmp1 || rb_is_black(tmp1)) {
 				tmp2 = sibling->rb_right;
-				if (!tmp2 || rb_is_black((unsigned long)tmp2)) {
+				if (!tmp2 || rb_is_black(tmp2)) {
                     //위에서 한 rebalancing 좌우반전?
 					rb_set_parent_color(sibling, parent, RB_RED);
-					if (rb_is_red((unsigned long)parent)){
+					if (rb_is_red(parent)){
 						rb_set_black(parent);
                     }
 					else {
@@ -485,7 +485,7 @@ rb_erase(struct rb_node *node, struct rb_root *root)
 			 * 이때 삭제되는 노드가 BLACK이라는 것은 형제노드가 NIL이 무조건 아니라는 것
 			 * 그렇게 때문에 parent는 무조건 한쪽 자식이 있음
 			 */
-			rebalance = rb_is_black(pc) ? parent : NULL;
+			rebalance = (pc & 1) ? parent : NULL;
 	} else if (!child) {
 		/* 
 		 * 오른쪽 자식은 없고 왼쪽 자식만 있는 경우
@@ -576,7 +576,7 @@ rb_erase(struct rb_node *node, struct rb_root *root)
 			 * successor가 BLACK이면 BLACK이 하나 없어지는 것
 			 * successor의 부모부터 rebalancing 필요
 			 */
-			rebalance = rb_is_black((unsigned long)successor) ? parent : NULL;
+			rebalance = rb_is_black(successor) ? parent : NULL;
 		}
 		successor->rb_parent_color = pc;
 	}
