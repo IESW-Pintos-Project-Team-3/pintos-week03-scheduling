@@ -12,8 +12,8 @@
 
 static thread_func lottery_thread;
 static struct lock count_lock;
-static int thread_counts[7] = {0, 0, 0, 0, 0, 0, 0}; // 각 스레드의 실행 횟수
-static int thread_tickets[7] = {50, 100, 150, 200, 250, 300, 350}; // 각 스레드의 티켓 수
+static int thread_counts[5] = {0, 0, 0, 0, 0}; // 각 스레드의 실행 횟수
+static int thread_tickets[5] = {50, 100, 150, 200, 250}; // 각 스레드의 티켓 수
 static bool test_finished = false;
 
 struct lottery_data {
@@ -25,7 +25,7 @@ void
 test_lottery_scheduling (void) 
 {
   int i;
-  struct lottery_data data[7];
+  struct lottery_data data[5];
   
   /* This test does not work with the MLFQS. */
   ASSERT (!thread_mlfqs);
@@ -38,7 +38,7 @@ test_lottery_scheduling (void)
   msg ("Thread 2: 150 tickets");
   
   /* Create 3 threads with different ticket counts */
-  for (i = 0; i < 7; i++) 
+  for (i = 0; i < 5; i++) 
     {
       char name[32];
       snprintf (name, sizeof name, "lottery-thread-%d", i);
@@ -65,7 +65,7 @@ test_lottery_scheduling (void)
   msg ("Lottery scheduling results:");
   
   int total_runs = 0;
-  for (i = 0; i < 7; i++) {
+  for (i = 0; i < 5; i++) {
     total_runs += thread_counts[i];
     msg ("Thread %d (tickets=%d): ran %d times", i, thread_tickets[i], thread_counts[i]);
   }
@@ -74,8 +74,8 @@ test_lottery_scheduling (void)
   
   /* Show expected vs actual distribution (using integer arithmetic) */
   msg ("Expected vs Actual distribution:");
-  for (i = 0; i < 7; i++) {
-    int expected_percent = (thread_tickets[i] * 100) / 1400;
+  for (i = 0; i < 5; i++) {
+    int expected_percent = (thread_tickets[i] * 100) / 750;
     int actual_percent = (thread_counts[i] * 100) / total_runs;
     msg ("Thread %d: expected %d%%, actual %d%%", i, expected_percent, actual_percent);
   }
@@ -102,10 +102,14 @@ lottery_thread (void *aux)
       asm ("mov %%esp, %0" : "=g" (esp));
       struct thread* t = pg_round_down (esp);
       msg("thread %d is scheduled, random_number: %lu",my_id,t->random_num);
+      unsigned long old_random_num = t->random_num;
       lock_acquire (&count_lock);
       thread_counts[my_id]++;
       lock_release (&count_lock);
-
-      thread_yield ();
+      // while(old_random_num == t->random_num){
+      //   asm ("mov %%esp, %0" : "=g" (esp));
+      //   t = pg_round_down (esp);
+      // }
+      thread_yield();
     }
 }
