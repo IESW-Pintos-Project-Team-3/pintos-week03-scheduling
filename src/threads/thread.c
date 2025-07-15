@@ -319,7 +319,7 @@ thread_sleep(int64_t ticks)
     list_push_back(&blocked_list, &cur->elem);
   }
   update_next_tick_to_awake();
-
+  dec_total_tickets(cur);
   cur->status = THREAD_BLOCKED;
 
   schedule();
@@ -686,14 +686,8 @@ dec_total_tickets(struct thread *t)
 struct thread *
 lottery_scheduling(void)
 {
- /*
-  누적 합 = 0 설정 
-  랜덤 수 설정 
-  ready_list를 시작부터 순회 
-  ready_list의 ticket값을 더해가면서 랜덤 수 누적 합과 비교 
-  - 누적 합이 랜덤 값보다 크다면 해당 쓰레드 선택, 작거나 같다면 다음 리스트로 이동 
-  - running 쓰레드는 ready 상태로 바꾸고 넣는다. 
- */
+  if (list_empty(&ready_list))
+    return idle_thread; // ready_list가 비어있으면 idle 반환
 
   int accumulate = 0;
   unsigned long rand_number = random_ulong () % total_tickets;
@@ -704,11 +698,10 @@ lottery_scheduling(void)
     struct thread *t = list_entry(e, struct thread, elem);
     accumulate += t->priority;
     if(accumulate >= rand_number){
-        list_remove(t);
-        dec_total_tickets(t);
-        /* 리턴을 해줌으로서 next_thread_to_run 에 해당하는 쓰레드가 됨 */
+        list_remove(e);
         return t;
-    } 
+    }
   }
-  
+  // 아무것도 선택되지 않을 경우에도 idle 반환
+  return idle_thread;
 }
