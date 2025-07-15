@@ -243,7 +243,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered(&ready_list, &t->elem,thread_pass_less, NULL);
   inc_total_tickets(t);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -347,7 +347,7 @@ thread_awake(int64_t ticks)
 
       old_level = intr_disable();
       ASSERT(t->status == THREAD_BLOCKED);
-      list_push_back(&ready_list, &t->elem);
+      list_insert_ordered(&ready_list, &t->elem,thread_pass_less, NULL);
       t->status = THREAD_READY;
       inc_total_tickets(t);
     }
@@ -371,7 +371,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread){
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered(&ready_list, &cur->elem,thread_pass_less, NULL);
     inc_total_tickets(cur);
   } 
   cur->status = THREAD_READY;
@@ -706,4 +706,18 @@ lottery_scheduling(void)
   }
   // 아무것도 선택되지 않을 경우에도 idle 반환
   return idle_thread;
+}
+
+bool
+thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+{
+    struct thread *ta = list_entry(a, struct thread, elem);
+    struct thread *tb = list_entry(b, struct thread, elem);
+
+    if (ta->priority == tb->priority){
+        return ta->tid > tb->tid ? true : false;
+    }
+    else{
+        return ta->priority > tb->priority ? true : false;
+    }
 }
