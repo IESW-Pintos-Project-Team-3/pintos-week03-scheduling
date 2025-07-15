@@ -20,9 +20,9 @@ typedef int tid_t;
 #define TID_ERROR ((tid_t) -1)          /* Error value for tid_t. */
 
 /* Thread priorities. */
-#define PRI_MIN 0                       /* Lowest priority. */
-#define PRI_DEFAULT 31                  /* Default priority. */
-#define PRI_MAX 63                      /* Highest priority. */
+#define PRI_MIN 50                       /* Lowest priority. */
+#define PRI_DEFAULT 500                  /* Default priority. */
+#define PRI_MAX 1000                      /* Highest priority. */
 
 /* A kernel thread or user process.
 
@@ -95,7 +95,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+    unsigned long random_num;            /*Random number for lottery*/
   
 
 #ifdef USERPROG
@@ -149,6 +149,7 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+bool thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
-bool thread_pass_less(const struct list_elem *, const struct list_elem *, void *aux UNUSED);
+static struct thread *lottery_scheduling(void);
 #endif /* threads/thread.h */

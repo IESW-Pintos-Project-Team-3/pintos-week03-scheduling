@@ -4,6 +4,7 @@
 #include <random.h>
 #include <stdio.h>
 #include <string.h>
+#include <random.h>
 #include "threads/flags.h"
 #include "threads/interrupt.h"
 #include "threads/intr-stubs.h"
@@ -242,7 +243,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_push_back(&ready_list, &t->elem);
+  //list_insert_ordered(&ready_list, &t->elem,thread_pass_less, NULL);
+  inc_total_tickets(t);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -317,7 +320,7 @@ thread_sleep(int64_t ticks)
     list_push_back(&blocked_list, &cur->elem);
   }
   update_next_tick_to_awake();
-
+  dec_total_tickets(cur);
   cur->status = THREAD_BLOCKED;
 
   schedule();
@@ -346,7 +349,9 @@ thread_awake(int64_t ticks)
       old_level = intr_disable();
       ASSERT(t->status == THREAD_BLOCKED);
       list_push_back(&ready_list, &t->elem);
+      // list_insert_ordered(&ready_list, &t->elem,thread_pass_less, NULL);
       t->status = THREAD_READY;
+      inc_total_tickets(t);
     }
     else{
       e = list_next(e);
@@ -367,8 +372,11 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+  if (cur != idle_thread){
+    list_push_back(&ready_list, &cur->elem);
+    // list_insert_ordered(&ready_list, &cur->elem,thread_pass_less, NULL);
+    inc_total_tickets(cur);
+  } 
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -554,7 +562,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return lottery_scheduling();
+    /*list_entry (list_pop_front (&ready_list), struct thread, elem);*/
 }
 
 /* Completes a thread switch by activating the new thread's page
@@ -676,3 +685,56 @@ thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+static int total_tickets;
+
+void
+inc_total_tickets(struct thread *t)
+{
+  total_tickets += t->priority;
+}
+
+void 
+dec_total_tickets(struct thread *t)
+{
+  total_tickets -= t->priority;
+}
+
+/* Lottery Scheduling */
+struct thread *
+lottery_scheduling(void)
+{
+  if (list_empty(&ready_list))
+    return idle_thread; // ready_list가 비어있으면 idle 반환
+
+  int accumulate = 0;
+  unsigned long rand_number = random_ulong () % total_tickets;
+
+  struct list_elem *e;
+
+  for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
+    struct thread *t = list_entry(e, struct thread, elem);
+    accumulate += t->priority;
+    if(accumulate >= rand_number){
+        t->random_num = rand_number;
+        list_remove(e);
+        return t;
+    }
+  }
+  // 아무것도 선택되지 않을 경우에도 idle 반환
+  return idle_thread;
+}
+
+bool
+thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+{
+    struct thread *ta = list_entry(a, struct thread, elem);
+    struct thread *tb = list_entry(b, struct thread, elem);
+
+    if (ta->priority == tb->priority){
+        return ta->tid > tb->tid ? true : false;
+    }
+    else{
+        return ta->priority > tb->priority ? true : false;
+    }
+}

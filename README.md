@@ -18,9 +18,9 @@
 
 ## 테스트 및 평가
 
+- Common : Fairness 측정 
 - Lottery: 정렬 리스트 vs 비정렬 리스트 성능 비교
-- Stride: 2의 지수승 vs 일반 정수 stride 값 비교 (starvation, 연산 속도)
+- Stride: pass 0일 때 독점 확인 
 - 두 스케줄러 모두 RB Tree 적용 시 성능 및 효율성 평가
-
+- 고정 소수점/부동 소수점 쓰지 않는 이유 설명 (보류) 
 ---
-
