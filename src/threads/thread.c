@@ -370,9 +370,10 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread){
     list_push_back (&ready_list, &cur->elem);
     inc_total_tickets(cur);
+  } 
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -679,7 +680,7 @@ inc_total_tickets(struct thread *t)
 void 
 dec_total_tickets(struct thread *t)
 {
-  total_tickets += t->priority;
+  total_tickets -= t->priority;
 }
 
 /* Lottery Scheduling */
@@ -691,6 +692,7 @@ lottery_scheduling(void)
 
   int accumulate = 0;
   unsigned long rand_number = random_ulong () % total_tickets;
+  // msg("random number : %lu",rand_number);
 
   struct list_elem *e;
 
