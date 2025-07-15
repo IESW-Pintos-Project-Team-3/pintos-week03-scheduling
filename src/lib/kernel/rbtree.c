@@ -76,7 +76,7 @@ rb_next(const struct rb_node *node)
      * 부모노드보다 다 작은 노드들이기 때문
      * 그 위는 부모노드보다 크건 작건 상관없음
 	 */
-	while ((parent = rb_parent((unsigned long)node)) && node == parent->rb_right){
+	while ((parent = rb_parent(node->rb_parent_color)) && node == parent->rb_right){
 		node = parent;
     }
 
@@ -111,7 +111,7 @@ rb_prev(const struct rb_node *node)
      * 부모노드보다 다 큰 노드들이기 때문
      * 그 위는 부모노드보다 크건 작건 상관없음
 	 */
-	while ((parent = rb_parent((unsigned long)node)) && node == parent->rb_left){
+	while ((parent = rb_parent(node->rb_parent_color)) && node == parent->rb_left){
 		node = parent;
     }
 
@@ -127,7 +127,7 @@ rb_set_black(struct rb_node* rb)
 static inline void
 rb_set_red(struct rb_node* rb)
 {
-    rb->rb_parent_color += RB_RED;
+    rb->rb_parent_color = (unsigned long)rb_parent(rb->rb_parent_color) + RB_BLACK;
 }
 
 
@@ -141,7 +141,7 @@ static inline void
 rb_rotate_set_parents(struct rb_node *old, struct rb_node *new,
 			struct rb_root *root, int color)
 {
-	struct rb_node *parent = rb_parent((unsigned long)old);
+	struct rb_node *parent = rb_parent(old->rb_parent_color);
 	new->rb_parent_color = old->rb_parent_color;
 	rb_set_parent_color(old, new, color);
 	rb_change_child(old, new, parent, root);
@@ -151,7 +151,7 @@ rb_rotate_set_parents(struct rb_node *old, struct rb_node *new,
 void
 rb_insert(struct rb_node* node, struct rb_root* root)
 {
-    struct rb_node* parent = rb_get_parent(node);
+    struct rb_node* parent = rb_parent(node->rb_parent_color);
 
     while(true){
         if(!parent){
@@ -168,7 +168,7 @@ rb_insert(struct rb_node* node, struct rb_root* root)
             break;
         }
 
-        struct rb_node* gparent = rb_get_parent(parent);
+        struct rb_node* gparent = rb_parent(parent->rb_parent_color);
         struct rb_node* tmp = gparent->rb_right;
         if(tmp != parent){ //부모노드 != tmp, 부모노드가 조부모의 왼쪽 자식
             if(tmp && rb_is_red(tmp)){
@@ -180,7 +180,7 @@ rb_insert(struct rb_node* node, struct rb_root* root)
                 rb_set_red(gparent);
                 
                 node = gparent;
-                parent = rb_get_parent(node);
+                parent = rb_parent(node->rb_parent_color);
                 continue;
             }
             /*
@@ -240,7 +240,7 @@ rb_insert(struct rb_node* node, struct rb_root* root)
                 rb_set_red(gparent);
                 
                 node = gparent;
-                parent = rb_get_parent(node);
+                parent = rb_parent(node->rb_parent_color);
                 continue;
 			}
             
@@ -335,7 +335,7 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
 						rb_set_black(parent);
 					else {
 						node = parent;
-						parent = rb_parent((unsigned long)node);
+						parent = rb_parent(node->rb_parent_color);
 						if (parent){
 							continue;
                         }
@@ -413,7 +413,7 @@ rb_erase_color(struct rb_node* parent, struct rb_root* root)
                     }
 					else {
 						node = parent;
-						parent = rb_parent((unsigned long)node);
+						parent = rb_parent(node->rb_parent_color);
 						if (parent){
 							continue;
                         }

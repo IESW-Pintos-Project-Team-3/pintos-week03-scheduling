@@ -68,7 +68,7 @@ test_stride_scheduling (void)
   msg ("Stride scheduling results:");
   
   int total_runs = 0;
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < 5; i++) {
     total_runs += thread_counts[i];
     msg ("Thread %d (tickets=%d): ran %d times", i, thread_tickets[i], thread_counts[i]);
   }
@@ -77,7 +77,7 @@ test_stride_scheduling (void)
   
   /* Show expected vs actual distribution (using integer arithmetic) */
   msg ("Expected vs Actual distribution:");
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < 5; i++) {
     int expected_percent = (thread_tickets[i] * 100) / 2550; // 250+500+750=1500
     int actual_percent = (thread_counts[i] * 100) / total_runs;
     msg ("Thread %d: expected %d%%, actual %d%%", i, expected_percent, actual_percent);

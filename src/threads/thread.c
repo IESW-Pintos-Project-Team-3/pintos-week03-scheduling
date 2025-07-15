@@ -358,8 +358,13 @@ thread_awake(int64_t ticks)
             t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
           }
       }*/
-      while (t->pass < rb_node_entry(ready_list.rb_leftmost, struct thread, node)->pass){
+      if (RB_EMPTY_ROOT(&ready_list)){
+        t->pass = 0;
+      }
+      else{
+        while (t->pass < rb_node_entry(ready_list.rb_leftmost, struct thread, node)->pass){
             t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
+      }
       }
       link_node(&t->node, &ready_list);
       t->status = THREAD_READY;
@@ -704,12 +709,21 @@ void link_node(struct rb_node* node, struct rb_root* root){
   struct thread* left = rb_node_entry(root->rb_leftmost, struct thread, node);
   struct thread* right = rb_node_entry(root->rb_rightmost, struct thread, node);
   
-  bool new_left, new_right;
-  if (new_thread->pass == left->pass){
-      new_left = new_thread->tid < left->tid ? true : false;
+  if (new_thread->pass <= left->pass){
+    if (new_thread->pass == left->pass){
+      root->rb_leftmost= new_thread->tid < left->tid ? node : root->rb_leftmost;
+    }
+    else{
+      root->rb_leftmost = node;
+    }
   }
-  if (new_thread->pass == right->pass){
-      root->rb_rightmost = new_thread->tid > right->tid ? true : false ;
+  if (new_thread->pass >= right->pass){
+    if (new_thread->pass == right->pass){
+        root->rb_rightmost = new_thread->tid > right->tid ? node : root->rb_rightmost;
+    }
+    else{
+        root->rb_rightmost = node;
+    }
   }
  
   struct rb_node* pnode = root->rb_node;
