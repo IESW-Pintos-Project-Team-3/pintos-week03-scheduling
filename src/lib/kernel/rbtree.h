@@ -51,22 +51,6 @@ extern struct rb_node* rb_last(const struct rb_root* );
 extern void rb_insert(struct rb_node* node, struct rb_root* root);
 extern void rb_erase(struct rb_node* parent, struct rb_root* root);
 
-static inline void
-rb_change_child(struct rb_node* old, struct rb_node* new_node,
-		  struct rb_node* parent, struct rb_root* root)
-{
-	if (parent) {
-		if (parent->rb_left == old){
-			WRITE_ONCE(parent->rb_left, new_node);
-		}
-		else{
-			WRITE_ONCE(parent->rb_right, new_node);
-		}
-	} else{
-		WRITE_ONCE(root->rb_node, new_node);
-	}
-}
-
 static inline void rb_set_parent(struct rb_node* rb, struct rb_node* p)
 {
 	//부모노드의 주소값 + rb노드의 색 = rb노드의 부모노드만 바꿈
@@ -95,5 +79,9 @@ rb_change_child(struct rb_node* old, struct rb_node* new_node,
 		}
 	} else{
 		WRITE_ONCE(root->rb_node, new_node);
+		if (!new_node){
+			WRITE_ONCE(root->rb_leftmost, NULL);
+			WRITE_ONCE(root->rb_rightmost, NULL);
+		}
 	}
 }

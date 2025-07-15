@@ -95,7 +95,8 @@ struct thread
     int64_t pass;              /* Pass value how long thread get CPU */
 
     /* Shared between thread.c and synch.c. */
-    struct rb_node elem;              /* List element. */
+    struct list_elem elem;              /* List element. */
+    struct rb_node node;              /* Node element. */
 
   
 
@@ -151,8 +152,8 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
-bool
-thread_pass_less(const struct list_elem *, const struct list_elem *, void *aux UNUSED);
+void link_node(struct rb_node *, struct rb_root*);
+//bool thread_pass_less(const struct list_elem *, const struct list_elem *, void *aux UNUSED);
 
 #endif /* threads/thread.h */
 

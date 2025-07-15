@@ -96,7 +96,7 @@ thread_init (void)
   ASSERT (intr_get_level () == INTR_OFF);
 
   lock_init (&tid_lock);
-  list_init (&ready_list);
+  rb_init (&ready_list);
   list_init(&blocked_list);
   list_init (&all_list);
 
@@ -246,7 +246,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  link_node(&t->node, &ready_list);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -358,10 +358,10 @@ thread_awake(int64_t ticks)
             t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
           }
       }*/
-     while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+      while (t->pass < rb_node_entry(ready_list.rb_leftmost, struct thread, node)->pass){
             t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
-     }
-      list_push_back(&ready_list, &t->elem);
+      }
+      link_node(&t->node, &ready_list);
       t->status = THREAD_READY;
     }
     else{
@@ -385,7 +385,7 @@ thread_yield (void)
   old_level = intr_disable ();
   if (cur != idle_thread) {
     cur->pass += thread_ticks * TOTALTICKETS * SCALINGFACTOR / cur->priority;
-    list_push_back (&ready_list, &cur->elem);
+    link_node (&cur->node, &ready_list);
   }
   cur->status = THREAD_READY;
   schedule ();
@@ -540,16 +540,16 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
-  t->tick_to_awake = INT64_MAX;
-  if (list_empty(&ready_list)){
-      t->pass = 0;
+  if (RB_EMPTY_ROOT(&ready_list)){
+    t->pass = 0;
   }
   else{
-      t->pass = 0;
-      while (t->pass < list_entry(list_min(&ready_list, thread_pass_less, NULL), struct thread, elem)->pass){
+    t->pass = 0;
+    while (t->pass < rb_node_entry(ready_list.rb_leftmost, struct thread, node)->pass){
           t->pass += TOTALTICKETS * SCALINGFACTOR / t->priority;
-      }
+    }
   }
+  t->tick_to_awake = INT64_MAX;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -578,12 +578,12 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  if (list_empty (&ready_list))
+  if (RB_EMPTY_ROOT (&ready_list))
     return idle_thread;
   else{
-    struct list_elem* next = list_min (&ready_list, thread_pass_less, NULL);
-    list_remove(next);
-    return list_entry (next, struct thread, elem);
+    struct rb_node* next = ready_list.rb_leftmost;
+    rb_erase(next, &ready_list);
+    return rb_node_entry (next, struct thread, node);
   }
 }
 
@@ -690,6 +690,70 @@ get_next_tick_to_awake (void)
   return list_empty(&blocked_list) ? INT64_MAX : next_tick_to_awake;
 }
 
+void link_node(struct rb_node* node, struct rb_root* root){
+  node->rb_left = node->rb_right = NULL;
+  node->rb_parent_color = 0;
+
+  if(RB_EMPTY_ROOT(root)){
+     root->rb_node = root->rb_leftmost = root->rb_rightmost = node;
+     rb_insert(node, root);
+     return;
+  }
+
+  struct thread* new_thread = rb_node_entry(node, struct thread, node);
+  struct thread* left = rb_node_entry(root->rb_leftmost, struct thread, node);
+  struct thread* right = rb_node_entry(root->rb_rightmost, struct thread, node);
+  
+  bool new_left, new_right;
+  if (new_thread->pass == left->pass){
+      new_left = new_thread->tid < left->tid ? true : false;
+  }
+  if (new_thread->pass == right->pass){
+      root->rb_rightmost = new_thread->tid > right->tid ? true : false ;
+  }
+ 
+  struct rb_node* pnode = root->rb_node;
+  struct rb_node* cnode = root->rb_node;
+  struct thread* parent;
+  struct thread* cur;
+  while (cnode){
+      pnode = cnode;
+      cur = rb_node_entry(cnode, struct thread, node);
+      if (new_thread->pass < cur->pass){
+          cnode = cnode->rb_left;
+      }
+      else if (new_thread->pass > cur->pass){
+          cnode = cnode->rb_right;
+      }
+      else{
+          if (new_thread->tid < cur->tid){
+              cnode = cnode->rb_left;
+          }
+          else{
+              cnode = cnode->rb_right;
+          }
+      }
+   }
+   node->rb_parent_color = pnode;
+   parent = rb_node_entry(pnode, struct thread, node);
+   if (new_thread->pass < parent->pass){
+         pnode->rb_left = node;
+   }
+   else if (new_thread->pass > parent->pass){
+       pnode->rb_right = node;
+   }
+   else{
+       if (new_thread->tid < parent->tid){
+           pnode->rb_left = node;
+       }
+       else{
+           pnode->rb_right = node;
+       }
+   }
+   rb_insert(node, root);
+}
+
+/*
 bool
 thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
 {
@@ -703,6 +767,7 @@ thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux
         return ta->pass < tb->pass ? true : false;
     }
 }
+*/
 
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */

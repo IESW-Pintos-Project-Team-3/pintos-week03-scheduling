@@ -148,17 +148,31 @@ define p_all
 end
 
 define p_ready
-    set $node = ready_list.head.next
-    printf "{\n"
-    while($node != &ready_list.tail)
-        # elem's offset is 48 in structh thread and struct listelem's size is 8bytes
-        # pointer arithemetic is n times of datasize
-        # To get struct thread entry, need 6*8 miuns
-        set $thread = (struct thread*)($node-7)
-        printf "  tid = %d, name = %s, pass = %d ", $thread->tid, $thread->name, $thread->pass
-        p $thread->status
-        set $node = $node->next
+    set $node = ready_list.rb_node
+    if $node == 0
+        printf "ready_list is empty\n"
+        return
     end
+    set $PTR_MASK = -2
+    while($node->rb_left != 0)
+        set $node = $node->rb_left
+    end
+    printf "{\n"
+    while $node != 0
+        set $thread = (struct thread*)((char*)$node-64)
+        printf "  tid = %d, name = %s, pass = %d, \n", $thread->tid, $thread->name, $thread->pass
+        if ($node->rb_right != 0)
+            set $node = (struct rb_node *)$node->rb_right
+            while $node->rb_left != 0
+                set $node = $node->rb_left
+            end
+        else
+            while (struct rb_node *) ( $node->rb_parent_color & $PTR_MASK) != 0 && $node  == ((struct rb_node *) ($node->rb_parent_color & $PTR_MASK))->rb_right
+                set $node = (struct rb_node *) ((unsigned long) $node->rb_parent_color & $PTR_MASK)
+            end
+            set $node = (struct rb_node *) ((unsigned long) $node->rb_parent_color & $PTR_MASK)
+        end
+    end    
     printf "}\n"
 end
 

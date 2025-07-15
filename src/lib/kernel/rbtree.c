@@ -121,13 +121,13 @@ rb_prev(const struct rb_node *node)
 static inline void
 rb_set_black(struct rb_node* rb)
 {
-    rb->rb_parent_color += RB_BLACK
+    rb->rb_parent_color += RB_BLACK;
 }
 
 static inline void
 rb_set_red(struct rb_node* rb)
 {
-    rb->rb_parent_color += RB_RED
+    rb->rb_parent_color += RB_RED;
 }
 
 
@@ -149,7 +149,7 @@ rb_rotate_set_parents(struct rb_node *old, struct rb_node *new,
 
 //삽입될 위치에 노드를 삽입한 후 호출
 void
-rb_insert(struct rb_node* node, struct rb_node* root)
+rb_insert(struct rb_node* node, struct rb_root* root)
 {
     struct rb_node* parent = rb_get_parent(node);
 
