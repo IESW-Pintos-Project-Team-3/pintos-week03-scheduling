@@ -320,7 +320,7 @@ thread_sleep(int64_t ticks)
     list_push_back(&blocked_list, &cur->elem);
   }
   update_next_tick_to_awake();
-  dec_total_tickets(cur);
+  // dec_total_tickets(cur);
   cur->status = THREAD_BLOCKED;
 
   schedule();
@@ -669,24 +669,24 @@ get_next_tick_to_awake (void)
   return list_empty(&blocked_list) ? INT64_MAX : next_tick_to_awake;
 }
 
-bool
-thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
-{
-    struct thread *ta = list_entry(a, struct thread, elem);
-    struct thread *tb = list_entry(b, struct thread, elem);
+// bool
+// thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+// {
+//     struct thread *ta = list_entry(a, struct thread, elem);
+//     struct thread *tb = list_entry(b, struct thread, elem);
 
-    if (ta->pass == tb->pass){
-        return ta->tid < tb->tid ? true : false;
-    }
-    else{
-        return ta->pass < tb->pass ? true : false;
-    }
-}
+//     if (ta->pass == tb->pass){
+//         return ta->tid < tb->tid ? true : false;
+//     }
+//     else{
+//         return ta->pass < tb->pass ? true : false;
+//     }
+// }
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
-static int total_tickets;
+static int total_tickets = 0;
 
 void
 inc_total_tickets(struct thread *t)
@@ -708,8 +708,8 @@ lottery_scheduling(void)
     return idle_thread; // ready_list가 비어있으면 idle 반환
 
   int accumulate = 0;
-  unsigned long rand_number = random_ulong () % total_tickets;
-
+  int rand_number = (random_ulong () & INT32_MAX )% total_tickets;
+  
   struct list_elem *e;
 
   for(e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)){
@@ -718,23 +718,24 @@ lottery_scheduling(void)
     if(accumulate >= rand_number){
         t->random_num = rand_number;
         list_remove(e);
+        total_tickets -= t->priority;
         return t;
     }
   }
   // 아무것도 선택되지 않을 경우에도 idle 반환
-  return idle_thread;
+  return list_entry(list_begin(&ready_list), struct thread, elem);
 }
 
-bool
-thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
-{
-    struct thread *ta = list_entry(a, struct thread, elem);
-    struct thread *tb = list_entry(b, struct thread, elem);
+// bool
+// thread_pass_less(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED) 
+// {
+//     struct thread *ta = list_entry(a, struct thread, elem);
+//     struct thread *tb = list_entry(b, struct thread, elem);
 
-    if (ta->priority == tb->priority){
-        return ta->tid > tb->tid ? true : false;
-    }
-    else{
-        return ta->priority > tb->priority ? true : false;
-    }
-}
+//     if (ta->priority == tb->priority){
+//         return ta->tid > tb->tid ? true : false;
+//     }
+//     else{
+//         return ta->priority > tb->priority ? true : false;
+//     }
+// }

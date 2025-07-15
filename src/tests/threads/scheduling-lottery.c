@@ -52,6 +52,7 @@ test_lottery_scheduling (void)
 
   /* Let threads run for a longer time */
   msg ("Running lottery scheduling test for 6000 ticks...");
+  msg("start ticks = %lld", timer_ticks());
   timer_sleep (6000);
 
   /* Signal threads to finish */
@@ -101,15 +102,15 @@ lottery_thread (void *aux)
       uint32_t *esp;
       asm ("mov %%esp, %0" : "=g" (esp));
       struct thread* t = pg_round_down (esp);
-      msg("thread %d is scheduled, random_number: %lu",my_id,t->random_num);
+      msg("thread %d is scheduled, scheduledtime = %lld",my_id,timer_ticks());
       unsigned long old_random_num = t->random_num;
       lock_acquire (&count_lock);
       thread_counts[my_id]++;
       lock_release (&count_lock);
-      // while(old_random_num == t->random_num){
-      //   asm ("mov %%esp, %0" : "=g" (esp));
-      //   t = pg_round_down (esp);
-      // }
-      thread_yield();
+      while(old_random_num == t->random_num){
+        asm ("mov %%esp, %0" : "=g" (esp));
+        t = pg_round_down (esp);
+      }
+      // thread_yield();
     }
 }
