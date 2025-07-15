@@ -7,6 +7,7 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "devices/timer.h"
 
 static thread_func lottery_thread;
@@ -50,8 +51,8 @@ test_lottery_scheduling (void)
     }
 
   /* Let threads run for a longer time */
-  msg ("Running lottery scheduling test for 9000 ticks...");
-  timer_sleep (9000);
+  msg ("Running lottery scheduling test for 6000 ticks...");
+  timer_sleep (6000);
 
   /* Signal threads to finish */
   test_finished = true;
@@ -97,7 +98,10 @@ lottery_thread (void *aux)
   
   while (!test_finished) 
     {
-      msg("thread %d is scheduled",my_id);
+      uint32_t *esp;
+      asm ("mov %%esp, %0" : "=g" (esp));
+      struct thread* t = pg_round_down (esp);
+      msg("thread %d is scheduled, random_number: %lu",my_id,t->random_num);
       lock_acquire (&count_lock);
       thread_counts[my_id]++;
       lock_release (&count_lock);

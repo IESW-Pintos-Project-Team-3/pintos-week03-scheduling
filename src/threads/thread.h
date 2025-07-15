@@ -96,7 +96,7 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+    unsigned long random_num;            /*Random number for lottery*/
   
 
 #ifdef USERPROG

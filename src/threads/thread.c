@@ -692,7 +692,6 @@ lottery_scheduling(void)
 
   int accumulate = 0;
   unsigned long rand_number = random_ulong () % total_tickets;
-  // msg("random number : %lu",rand_number);
 
   struct list_elem *e;
 
@@ -700,6 +699,7 @@ lottery_scheduling(void)
     struct thread *t = list_entry(e, struct thread, elem);
     accumulate += t->priority;
     if(accumulate >= rand_number){
+        t->random_num = rand_number;
         list_remove(e);
         return t;
     }
