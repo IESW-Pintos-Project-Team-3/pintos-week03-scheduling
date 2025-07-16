@@ -15,6 +15,12 @@ static int thread_counts[5] = {0, 0, 0, 0, 0}; // 각 스레드의 실행 횟수
 static int thread_tickets[5] = {50, 250, 500, 750, 1000}; // 각 스레드의 티켓 수
 static bool test_finished = false;
 
+static inline uint64_t rdtsc(void) {
+  unsigned hi, lo;
+  __asm__ volatile ("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((uint64_t)hi << 32) | lo;
+}
+
 struct thread_data {
   int id;
   int tickets;
@@ -55,10 +61,13 @@ test_stride_scheduling (void)
 
   /* Let threads run for a longer time */
   msg ("Running stride scheduling test for 6000 ticks...");
+  uint64_t start_cycles = rdtsc();
   timer_sleep (6000);
 
   /* Signal threads to finish */
   test_finished = true;
+  uint64_t end_cycles = rdtsc();
+  msg("Total CPU cycles spent during scheduling: %llu\n", end_cycles - start_cycles);
   
   /* Wait a bit more for threads to finish */
   timer_sleep (100);
