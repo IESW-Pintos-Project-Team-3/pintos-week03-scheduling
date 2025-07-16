@@ -9,14 +9,15 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "devices/timer.h"
+#include <random.h>
 
 static struct lock count_lock;
-static int thread_counts[7] = {0, 0, 0, 0, 0, 0, 0}; // 각 스레드의 실행 횟수
-static int thread_tickets[7] = {400, 450, 500, 550, 600, 650, 700}; // 각 스레드의 티켓 수
-static bool test_finished = false;
+static int thread_counts[3]; // 각 스레드의 실행 횟수
+static int thread_tickets[3] = { 250, 500, 750 };
+static bool test_finished;
 static int64_t start_tick;
 static int cnt = 0;
-static int tick_thread_counts[10][7] = {{0, 0, 0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0},{0, 0, 0, 0, 0}};
+static int tick_thread_counts[30][3];
 static inline uint64_t rdtsc(void) {
   unsigned hi, lo;
   __asm__ volatile ("rdtsc" : "=a"(lo), "=d"(hi));
@@ -34,7 +35,7 @@ void
 test_lottery_scheduling (void) 
 {
   int i;
-  struct thread_data data[7];
+  struct thread_data data[3];
   
   /* This test does not work with the MLFQS. */
   ASSERT (!thread_mlfqs);
@@ -47,9 +48,9 @@ test_lottery_scheduling (void)
   msg ("Thread 2: 500 tickets"); 
   msg ("Thread 3: 750 tickets");
   msg ("Thread 4: 1000 tickets");
-  
+ 
   /* Create 3 threads with different ticket counts */
-  for (i = 0; i < 7; i++) 
+  for (i = 0; i < 3; i++) 
     {
       char name[32];
       snprintf (name, sizeof name, "stride-thread-%d", i);
@@ -65,7 +66,7 @@ test_lottery_scheduling (void)
   msg ("Running stride scheduling test for 6000 ticks...");
   start_tick = timer_ticks();
   uint64_t start_cycles = rdtsc();
-  timer_sleep (6000);
+  timer_sleep (3000);
 
   /* Signal threads to finish */
   test_finished = true;
@@ -83,15 +84,19 @@ test_lottery_scheduling (void)
   msg ("Expected vs Actual distribution:");
   for (i = 0; i < cnt; i++) {
     int total_runs = 0;
-    for (int j = 0; j < 7; j++) {
+    int fairness = 0;
+    for (int j = 0; j < 3; j++) {
       total_runs += tick_thread_counts[i][j];
       // msg ("Thread %d (tickets=%d): ran %d times", j, thread_tickets[j], tick_thread_counts[i][j]);
     }
-    for(int j = 0;j< 7;j++){
-      int expected_percent = (thread_tickets[j] * 100) / 3850; // 250+500+750=1500
-      int actual_percent = (tick_thread_counts[i][j] * 100) / total_runs;
-      msg ("Thread %d: expected %d%%, actual %d%%", j, expected_percent, actual_percent);
+    msg ("%dtick result", (i+1)*100);
+    for(int j = 0;j< 3;j++){
+      int expected_percent = (thread_tickets[j] * 100000) / 1500; // 250+500+750=1500
+      int actual_percent = (tick_thread_counts[i][j] * 100000) / total_runs;
+      // msg ("Thread %d: expected %d%%, actual %d%%", j, expected_percent, actual_percent);
+      fairness += abs(expected_percent-actual_percent);
     }
+    msg("fairness = %d%%", (100000-fairness/3));
   }
   
   /* Check if stride scheduling is working */
@@ -120,10 +125,10 @@ lottery_schedule (void *aux)
       lock_acquire (&count_lock);
       thread_counts[my_id]++;
       int64_t timing = timer_ticks()-start_tick;
-      if (timing != 0 && timing%600 == 0 ){
-        for (int i = 0; i < 7; i++) {
-          tick_thread_counts[cnt][i] += thread_counts[i];
-          tick_thread_counts[cnt+1][i] = tick_thread_counts[cnt][i];
+      if (timing > 0 && timing%100 == 0 ){
+        for (int i = 0; i < 3; i++) {
+          tick_thread_counts[cnt][i] += thread_counts[i]*4;
+          // tick_thread_counts[cnt+1][i] = tick_thread_counts[cnt][i];
         }
         cnt++;
       }
