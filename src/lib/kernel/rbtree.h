@@ -1,9 +1,7 @@
+#ifndef RBTREE_H
+#define RBTREE_H
 #include <stdbool.h>
 #include <stddef.h>
-
-#ifndef __always_inline
-#define __always_inline inline __attribute__((always_inline))
-#endif
 
 struct rb_node{
   unsigned long rb_parent_color;
@@ -85,3 +83,5 @@ rb_change_child(struct rb_node* old, struct rb_node* new_node,
 		}
 	}
 }
+
+#endif

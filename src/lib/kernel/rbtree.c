@@ -1,5 +1,4 @@
 #include <rbtree.h>
-
 /*
  * 일단 CASE는 무시해도 됩니다
  * CASE 1 : 삼촌 노드가 RED
@@ -127,7 +126,7 @@ rb_set_black(struct rb_node* rb)
 static inline void
 rb_set_red(struct rb_node* rb)
 {
-    rb->rb_parent_color = (unsigned long)rb_parent(rb->rb_parent_color) + RB_BLACK;
+    rb->rb_parent_color = (unsigned long)rb_parent(rb->rb_parent_color)& ~1UL;
 }
 
 
@@ -455,7 +454,7 @@ rb_erase(struct rb_node *node, struct rb_root *root)
 	}
 	
 	if (root->rb_rightmost == node){
-		root->rb_leftmost = rb_prev(node);
+		root->rb_rightmost = rb_prev(node);
 	}
 
 	struct rb_node* child = node->rb_right;
